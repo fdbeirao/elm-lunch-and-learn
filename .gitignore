@@ -1,0 +1,2 @@
+# Ignore the folder where elm downloads the packages into
+elm-stuff
