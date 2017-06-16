@@ -6,5 +6,5 @@ Good question. I created this repo to try to share some of the experiences of cr
 
 ## Available sessions
 
-* [Day 1 - Simple architecture + Mandatory Hello world](Day%201/)
-* [Day 2 - The MVP for an editable table](Day%202/)
+* [Day 1 - Simple architecture + Mandatory Hello world](Day1/)
+* [Day 2 - The MVP for an editable table](Day2/)

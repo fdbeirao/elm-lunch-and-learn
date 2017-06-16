@@ -23,7 +23,7 @@ The following has been identified as features for "next version":
 
 ## Let's start with.. the view?
 
-We assume our `main.elm` file starts with the same content as the one from [Day 1](../Day%201/main.elm).
+We assume our `main.elm` file starts with the same content as the one from [Day 1](../Day1/main.elm).
 
 If we were to create a [plain old simple table using HTML](https://www.w3schools.com/html/html_tables.asp) we would have something like:
 
@@ -479,8 +479,143 @@ asRowCells rowNumber cells =
 
 We can now F5 our browser and the table will still look the same. That's good, but we don't feel like making real progress yet.
 
+## Time to bring the first "dynamicness" feeling
+
+If we remember the signature of our `view` function, we notice that it receives the `Model` as its input. Let us define a `Model` that enables us to keep the existing representation of the table, without having hardcoded values inside the `view` function. Let's keep in mind that there is no such thing as a perfect model. There are only useful or non useful models.
+
+One such model that could be useful to represent the existing table would be:
+
+```elm
+---- MODEL ----
+
+
+type alias Model =
+    { headers : List String
+    , rows : List Row
+    }
+
+
+type alias Row =
+    List String
+```
+
+We are now in a discovery/refactor cycle. We cannot use the browser to see any work until the ELM compiler is satified. ELM's compiler is letting us know that the `init` function is not implemented according to its type specification:
+
+```elm
+Detected errors in 1 module.
+
+
+-- TYPE MISMATCH ------------------------------------------------------ main.elm
+
+The definition of `init` does not match its type annotation.
+
+51| init : ( Model, Cmd Msg )
+52| init =
+53|>    "world" ! []
+
+The type annotation for `init` says it is a:
+
+    ( Model, Cmd Msg )
+
+But the definition (shown above) is a:
+
+    ( String, Cmd msg )
+```
+
+We must now fix our `init` function to return a record with the shape that we defined our `Model` to have:
+
+```elm
+---- INIT ----
+
+
+init : ( Model, Cmd Msg )
+init =
+    { headers = [ "#", "First name", "Last name" ]
+    , rows =
+        [ [ "Jack", "The Stupid Cat" ]
+        , [ "Óscar", "Alho" ]
+        ]
+    } ! []
+```
+
+Okay, ELM's compiler is happy now. Yet, we know that our `view` function isn't using these rows that we put on our `model`. Let's change our `view` function to use these values:
+
+```elm
+---- VIEW ----
+
+
+view : Model -> Html Msg
+view model =
+    let
+        headerRow =
+            model.headers
+                |> asTableHeaders
+
+        tableRows =
+            model.rows
+                |> List.indexedMap
+                    (\rowNumber row ->
+                        asTableRow (rowNumber + 1) row
+                    )
+    in
+        table
+            [ Html.Attributes.attribute "border" "1" ]
+            (headerRow ++ tableRows)
+
+
+asTableHeaders : List String -> List (Html Msg)
+asTableHeaders headers =
+    List.map (\headerText -> th [] [ text headerText ]) headers
+
+
+asTableRow : Int -> Row -> Html Msg
+asTableRow rowNumber cells =
+    let
+        rowNumberCell =
+            td [] [ text (toString rowNumber) ]
+
+        rowCells =
+            cells |> asRowCells
+    in
+        tr [] (rowNumberCell :: rowCells)
+
+
+asRowCells : List String -> List (Html Msg)
+asRowCells cells =
+    List.map (\cellText -> td [] [ text cellText ]) cells
+```
+
+No, no, no! What have you done?? A new function `asTableRow`? A new symbol `|>`?? Oh dear, here we go again. So about the `asTableRow` function, we have seen this before, nothing really surprising here. But let's take a second to appreciate the [`|>`](http://package.elm-lang.org/packages/elm-lang/core/latest/Basics#|>) function. It is oficially known as *Forward function application*, but its friends call it `pipe`. It has a signature that should be friendly enough by now:
+
+```elm
+(|>) : a -> (a -> b) -> b
+```
+
+Basically this function receives two inputs: something of type `a` and a function that itself takes an input of that same type `a` and returns something of type `b`. Finally, our pipe function returns something of type `b`. Why is this function even useful, you may ask?
+Its purpose in life is to decrease parenthesis nesting, therefore increasing code readability by decreasing the amount of stacked operations a human needs to keep in his brain.
+
+Shamelessly copy-pasting the example from ELM's documentation, the pipe function allows us to transform this messy code:
+
+```elm
+scale 2 (move (10,10) (filled blue (ngon 5 30)))
+```
+
+Into this much more readable code:
+
+```elm
+ngon 5 30
+    |> filled blue
+    |> move (10, 10)
+    |> scale 2
+```
+
+Notice how the `filled` function takes 2 inputs, but with the pipe function it only seems to take one. That is because the pipe function is expanding `ngon 5 30 |> filled blue` into `filled blue (ngon 5 30)`. Our eyes, fingers and brains will grow used to this pipe function the more we use it. And because it is (just like everything else) a pure function, it has no magic.
+
+We can now F5 our application and we see that our application still looks the same, which is a good thing, but we have now removed the hard-coded rows from our `view` function. We are in a good direction!
+
 **Work in progress ...**
 
-- [ ] Explore `map` function still inside the `view`
-- [ ] Now add something to `Model`
-- [ ] Implement `init`
+- [x] Explore `map` function still inside the `view`
+- [x] Now add something to `Model`
+- [x] Implement `init`
+- [ ] Click a cell + the first message

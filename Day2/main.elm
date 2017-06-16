@@ -8,7 +8,13 @@ import Html.Attributes
 
 
 type alias Model =
-    String
+    { headers : List String
+    , rows : List Row
+    }
+
+
+type alias Row =
+    List String
 
 
 
@@ -48,7 +54,13 @@ subscriptions model =
 
 init : ( Model, Cmd Msg )
 init =
-    "world" ! []
+    { headers = [ "#", "First name", "Last name" ]
+    , rows =
+        [ [ "Jack", "The Stupid Cat" ]
+        , [ "Óscar", "Alho" ]
+        ]
+    }
+        ! []
 
 
 
@@ -66,18 +78,21 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    table
-        [ Html.Attributes.attribute "border" "1" ]
-        [ tr
-            []
-            (asTableHeaders [ "#", "First name", "Last name" ])
-        , tr
-            []
-            (asRowCells 1 [ "Jack", "The Stupid Cat" ])
-        , tr
-            []
-            (asRowCells 2 [ "Óscar", "Alho" ])
-        ]
+    let
+        headerRow =
+            model.headers
+                |> asTableHeaders
+
+        tableRows =
+            model.rows
+                |> List.indexedMap
+                    (\rowNumber row ->
+                        asTableRow (rowNumber + 1) row
+                    )
+    in
+        table
+            [ Html.Attributes.attribute "border" "1" ]
+            (headerRow ++ tableRows)
 
 
 asTableHeaders : List String -> List (Html Msg)
@@ -85,13 +100,18 @@ asTableHeaders headers =
     List.map (\headerText -> th [] [ text headerText ]) headers
 
 
-asRowCells : Int -> List String -> List (Html Msg)
-asRowCells rowNumber cells =
+asTableRow : Int -> Row -> Html Msg
+asTableRow rowNumber cells =
     let
         rowNumberCell =
             td [] [ text (toString rowNumber) ]
 
         rowCells =
-            List.map (\cellText -> td [] [ text cellText ]) cells
+            cells |> asRowCells
     in
-        rowNumberCell :: rowCells
+        tr [] (rowNumberCell :: rowCells)
+
+
+asRowCells : List String -> List (Html Msg)
+asRowCells cells =
+    List.map (\cellText -> td [] [ text cellText ]) cells
