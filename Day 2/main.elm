@@ -3,6 +3,7 @@ module Main exposing (..)
 import Html exposing (Html, table, tr, th, td, text)
 import Html.Attributes
 
+
 ---- MODEL ----
 
 
@@ -69,20 +70,28 @@ view model =
         [ Html.Attributes.attribute "border" "1" ]
         [ tr
             []
-            [ th [] [ text "#" ]
-            , th [] [ text "First name" ]
-            , th [] [ text "Last name" ]
-            ]
+            (asTableHeaders [ "#", "First name", "Last name" ])
         , tr
             []
-            [ td [] [ text "1" ]
-            , td [] [ text "Jack" ]
-            , td [] [ text "The Stupid Cat" ]
-            ]
+            (asRowCells 1 [ "Jack", "The Stupid Cat" ])
         , tr
             []
-            [ td [] [ text "2" ]
-            , td [] [ text "Óscar" ]
-            , td [] [ text "Alho" ]
-            ]
+            (asRowCells 2 [ "Óscar", "Alho" ])
         ]
+
+
+asTableHeaders : List String -> List (Html Msg)
+asTableHeaders headers =
+    List.map (\headerText -> th [] [ text headerText ]) headers
+
+
+asRowCells : Int -> List String -> List (Html Msg)
+asRowCells rowNumber cells =
+    let
+        rowNumberCell =
+            td [] [ text (toString rowNumber) ]
+
+        rowCells =
+            List.map (\cellText -> td [] [ text cellText ]) cells
+    in
+        rowNumberCell :: rowCells

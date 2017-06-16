@@ -189,6 +189,296 @@ Our table now looks a little more like a table (even if it is still awful):
 
 ![Now with borders](imgs/a18f11b9-8908-41b6-ada3-7c0623e3a0a0.png)
 
+## First steps into Functional Programming
+
+Before diving into the `Model` let's start using some simple techniques from "functional programming" to improve our `view` function.
+
+Let's look at the first "`<tr>`" returned by our `view` function:
+
+```elm
+tr 
+    [] 
+    [ th [] [ text "#" ] 
+    , th [] [ text "First name" ] 
+    , th [] [ text "Last name" ]
+    ]
+```
+
+Let's make our very first use of the [`map`](http://package.elm-lang.org/packages/elm-lang/core/latest/List#map) function.
+`map` has a particularly interesting signature:
+
+```elm
+map : (a -> b) -> List a -> List b
+```
+
+Trying to read this as humans, we see that `map` function has 2 inputs. The first input is `(a -> b)`. This means "a function that has 1 input of type `a`, and an output of `b`. There are no restrictions on what `a` or `b` are, and they can even be the same".
+
+The second input of `map` is a `List a`, which basically is a list/array of elements of type `a`. The restriction here is that whatever type `a` is, it must be the same for both the first and the second inputs of `map`.
+
+Finally, the output of `map` is a `List b`. Again, whatever type this `b` is, it must be the same as in `(a -> b)`.
+
+Let's see the canonical example for `map`, using `elm repl`:
+
+```elm
+> List.map (\x -> x * 2) [1,2,3]
+[2,4,6] : List number
+```
+
+In this example, `(\x -> x * 2)` is the first argument for `map`, and `[1,2,3]` is the second argument.
+
+`(\x -> x * 2)` is what is called an *anonymous function*. It takes some `x` as input and will return `x * 2` as the output. ELM will infer the types for us. What would happen if we provided a list of the wrong type? ELM's compiler would let us know:
+
+```elm
+> List.map (\x -> x * 2) ["a", "b", "c"]
+-- TYPE MISMATCH --------------------------------------------- repl-temp-000.elm
+
+The 2nd argument to function `map` is causing a mismatch.
+
+3|   List.map (\x -> x * 2) ["a", "b", "c"]
+                            ^^^^^^^^^^^^^^^
+Function `map` is expecting the 2nd argument to be:
+
+    List number
+
+But it is:
+
+    List String
+
+Hint: I always figure out the type of arguments from left to right. If an
+argument is acceptable when I check it, I assume it is "correct" in subsequent
+checks. So the problem may actually be in how previous arguments interact with
+the 2nd.
+```
+
+How can `map` help us improve our `view` function? Let's try out a function `asTableHeaders`:
+
+```elm
+asTableHeaders : List String -> List (Html Msg)
+asTableHeaders headers =
+    List.map (\headerText -> th [] [ text headerText]) headers
+```
+
+This is a function that will take a `List String` and return a `List` of `Html Msg`. 
+
+`List (Html Msg)` is exactly the type for the second input of the `tr` function.
+
+That means we can now do this:
+
+```elm
+---- VIEW ----
+
+
+view : Model -> Html Msg
+view model =
+    table
+        [ Html.Attributes.attribute "border" "1" ]
+        [ tr
+            []
+            (asTableHeaders [ "#", "First name", "Last name" ])
+        , tr
+            []
+            [ td [] [ text "1" ]
+            , td [] [ text "Jack" ]
+            , td [] [ text "The Stupid Cat" ]
+            ]
+        , tr
+            []
+            [ td [] [ text "2" ]
+            , td [] [ text "Óscar" ]
+            , td [] [ text "Alho" ]
+            ]
+        ]
+
+
+asTableHeaders : List String -> List (Html Msg)
+asTableHeaders headers =
+    List.map (\headerText -> th [] [ text headerText]) headers
+```
+
+We can use the same technique for the `td` functionss in the rows themselves, by creating an `asRowCells` function:
+
+```elm
+asRowCells : List String -> List (Html Msg)
+asRowCells cells =
+    List.map (\cellText -> td [] [ text cellText ]) cells
+```
+
+And now use it in our `view` function:
+
+```elm
+---- VIEW ----
+
+
+view : Model -> Html Msg
+view model =
+    table
+        [ Html.Attributes.attribute "border" "1" ]
+        [ tr
+            []
+            (asTableHeaders [ "#", "First name", "Last name" ])
+        , tr
+            []
+            (asRowCells [ "1", "Jack", "The Stupid Cat" ])
+        , tr
+            []
+            (asRowCells [ "2", "Óscar", "Alho" ])
+        ]
+
+
+asTableHeaders : List String -> List (Html Msg)
+asTableHeaders headers =
+    List.map (\headerText -> th [] [ text headerText]) headers
+
+
+asRowCells : List String -> List (Html Msg)
+asRowCells cells =
+    List.map (\cellText -> td [] [ text cellText ]) cells
+```
+
+If we refresh our browser now (we are using `elm reactor` to serve our `main.elm` file), everything should still look the same. The thing to keep in mind here is that we are in an *exploratory* phase. We are getting a feeling for the task we have at hands, and ELM compiler is constantly keeping us in check with our types and functions.
+
+I am looking at our current `view` function and I see two things that we can help us get closer to our final objective:
+* From our requirments, the first column in each row is its number. We can adapt `asRowCells` to reflect this fact;
+* The number of rows is undetermined at runtime. We start with 2, but the user can add more rows. This seems to be calling for another `map` function;
+
+Let's tackle this and see how it turns out. Again, *exploration* is the word of the day.
+
+We are going to add an `Int` to the inputs of `asRowCells` to represent the number of the row that is being returned.
+
+```elm
+asRowCells : Int -> List String -> List (Html Msg)
+asRowCells rowNumber cells =
+    let
+        rowNumberCell =
+            td [] [ text rowNumber ]
+
+        rowCells =
+            List.map (\cellText -> td [] [ text cellText ]) cells
+    in
+        rowNumberCell :: rowCells
+```
+
+Wait, what?? What just happened? `let`, `in`... `::` ? Holy molly 😱. Let's take it one step at a time.
+
+The construct `let (...) in (...)` is basically how ELM allows us to declare "*variables*" (they are assign-only variables, efectively making them constants). 
+
+Take for instance this function:
+
+```elm
+foo : Int -> Int -> Int
+foo x y =
+    let
+        sum = 
+            x + y
+        prod =
+            sum * x
+    in
+        sum + prod
+```
+
+We can use `elm repl` to test it out. Inserting multi-line functions into `elm repl` is somewhat anoying, because we need to indent them correctly and trail all our expressions with `\` except for the final one. Here it is in a `repl` friendly format:
+
+```elm
+foo x y =          \
+  let              \
+    sum = x + y    \
+    prod = sum * x \
+  in               \
+    sum + prod
+```
+
+We can now interact with `foo` directly on the `repl`:
+
+```elm
+---- elm-repl 0.18.0 -----------------------------------------------------------
+ :help for help, :exit to exit, more at <https://github.com/elm-lang/elm-repl>
+--------------------------------------------------------------------------------
+> foo x y =          \
+|   let              \
+|     sum = x + y    \
+|     prod = sum * x \
+|   in               \
+|     sum + prod
+<function> : number -> number -> number
+> foo 1 1
+4 : number
+> foo 1 2
+6 : number
+> foo 2 1
+9 : number
+>
+```
+
+So we can now see the purpose of `let (consts) in (declaration)`. 👍
+
+What about that strange [`::`](http://package.elm-lang.org/packages/elm-lang/core/latest/List#::)? Well, that is just a function with signature `(::) : a -> List a -> List a` that appends an element of type `a` to the head of a `List a` (remember that this means that the element itself must be of the same type as the elements on the `List`). This function is also known as `cons`. Examples:
+
+```elm
+1 :: [2,3] == [1,2,3]
+1 :: [] == [1]
+"a" :: ["a"] == ["a","a"]
+```
+
+We can now better understand our new `asRowCells` function, so let's update our `view` function to use it:
+
+```elm
+view : Model -> Html Msg
+view model =
+    table
+        [ Html.Attributes.attribute "border" "1" ]
+        [ tr
+            []
+            (asTableHeaders [ "#", "First name", "Last name" ])
+        , tr
+            []
+            (asRowCells 1 [ "Jack", "The Stupid Cat" ])
+        , tr
+            []
+            (asRowCells 2 [ "Óscar", "Alho" ])
+        ]
+```
+
+If we try to refresh our browser, ELM's compiler will do its job telling us that our work isn't correct:
+
+```elm
+Detected errors in 1 module.
+
+
+-- TYPE MISMATCH ------------------------------------------------------ main.elm
+
+The argument to function `text` is causing a mismatch.
+
+92|                     text rowNumber 
+                             ^^^^^^^^^
+Function `text` is expecting the argument to be:
+
+    String
+
+But it is:
+
+    Int
+```
+
+Yes ELM, you are right as usual. So how do we convert an `Int` to a `String`. If you said "there must be a function" for that, we are right. The function is [`toString`](http://package.elm-lang.org/packages/elm-lang/core/latest/Basics#toString) and its signature is quite simple: `toString : a -> String`
+
+Let's adjust our `asRowCells` to use `toString` before passing it to the `text` function:
+
+```elm
+asRowCells : Int -> List String -> List (Html Msg)
+asRowCells rowNumber cells =
+    let
+        rowNumberCell =
+            td [] [ text (toString rowNumber) ]
+
+        rowCells =
+            List.map (\cellText -> td [] [ text cellText ]) cells
+    in
+        rowNumberCell :: rowCells
+
+```
+
+We can now F5 our browser and the table will still look the same. That's good, but we don't feel like making real progress yet.
+
 **Work in progress ...**
 
 - [ ] Explore `map` function still inside the `view`
