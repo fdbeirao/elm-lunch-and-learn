@@ -623,7 +623,7 @@ We can now F5 our application and we see that our application still looks the sa
 ## Our first interaction
 
 
-If we recall back to our requirements, we need to give the user the possibility to edit the contents of the table. This means we need to capture this user intention. In ELM the way we convey user intentions or ever systems facts is always though a message. This message will have one of the types defined by our own type `Msg`. Right now we have defined `Msg` as `NoOp`:
+If we recall back to our requirements, we need to give the user the possibility to edit the contents of the table. This means we need to capture this user intention. In ELM the way we convey user intentions or even system facts is always though a message. This message will have one of the types defined by our own type `Msg`. Right now we have defined `Msg` as `NoOp`:
 
 ```elm
 ---- MSG ----
@@ -633,7 +633,9 @@ type Msg
     = NoOp
 ```
 
-Any of the messages inside our `Msg` type can convey a payload. This is convenient for us right now, because there are currently 4 editable cells in our table (it has 2 rows). We need a way to distinguish those cells from one another. Maybe we can look at each cell as having a coordinate. Maybe `{ row : Int, col : Int }` would be a way to represent the coordinate of a cell.
+Any of the messages inside our `Msg` type can contain a payload. Each message conveys either an intention from the user, or a fact that occurred in our application. 
+
+There are currently 4 editable cells in our table: 2 cell in two 2 rows. We need a way to distinguish those cells from one another. Maybe we can look at each cell as having a coordinate. Maybe `{ row : Int, col : Int }` would be a way to represent the coordinate of a cell.
 
 Let's create a type to represent this coordinate:
 
@@ -646,7 +648,7 @@ type alias CellCoordinates =
 
 Before we dive into the more complicated scenario of editing the content of a cell, let's add a feature to help us visualize what is going on. We will add a feature that highlights the cell that is currently being *hovered* by the user.
 
-Hovering consists of two things: the mouse cursor entering an area, and the mouse cursor leaving this area. We already have two javascript events that do this for us: [`onMouseEnter`](https://www.w3schools.com/jsref/event_onmouseenter.asp) and [`onMouseLeave`](https://www.w3schools.com/jsref/event_onmouseleave.asp). First things first, let's create two new messages to convey the result of these events:
+Hovering consists of two things: the mouse cursor entering an area, and the mouse cursor leaving this area. We already have two javascript callbacks that can notify us of these events: [`onMouseEnter`](https://www.w3schools.com/jsref/event_onmouseenter.asp) and [`onMouseLeave`](https://www.w3schools.com/jsref/event_onmouseleave.asp). First things first, let's create two new messages to convey the result of these events:
 
 ```elm
 ---- MSG ----
@@ -657,9 +659,9 @@ type Msg
     | OnMouseLeaveCell
 ```
 
-Here, we have defined that an `OnMouseEnterCell` can happen, and it will have a payload of type `CellCoordinates` (that we defined above). Also, an `OnMouseLeaveCell` can happen, and here we are being a little smart and we do not really care about what particular cell was left, because there can only be one hovered cell at any given time.
+Here, we have defined that an `OnMouseEnterCell` can happen in our application, and it will have a payload of type `CellCoordinates` (that we defined above). Also, an `OnMouseLeaveCell` can happen, and here we are being a little smart and we do not really care about what particular cell was left, because there can only be one hovered cell at any given time.
 
-We will now edit our `view` function to emit these messages. In order to represent on the result of the `view` function that we want to be "wired" to javascript events, we need to import these functions from the [`Html.Events`](http://package.elm-lang.org/packages/elm-lang/html/2.0.0/Html-Events) ELM package. Let's add this import, that already brings the `onMouseEnter` and `onMouseLeave` functions into our file:
+We will now edit our `view` function to emit these messages. In order to represent on the result of the `view` function that we want to be "wired" to javascript events, we need to import these functions from the [`Html.Events`](http://package.elm-lang.org/packages/elm-lang/html/2.0.0/Html-Events) ELM package. Let's add this import, that already brings the `onMouseEnter` and `onMouseLeave` ELM functions into our file:
 
 ```elm
 import Html.Events exposing (onMouseEnter, onMouseLeave)
@@ -675,7 +677,9 @@ onMouseLeave : msg -> Attribute msg
 
 This `msg` is not related to our `Msg`. Remember that any lowercase words in a function's signature represents the constraint that the same word must be of the same type in all usages within the same signature. [`Attribute`](http://package.elm-lang.org/packages/elm-lang/html/2.0.0/Html#Attribute) is an opaque union type that represents an intention to attach a particular attribute to an HTML element.
 
-We are now able to invoke these two functions inside our `view` function. We need to listen to the `onMouseEnter` and `onMouseLeave` from our `<td>` elements. These `<td>` elements are currently being generated by our `asRowCells` function. If we are going to add this "behaviour" to the `<td>` returned by `asRowCells`, maybe it is a good idea to rename it, just so that it doesn't bring unexpected surprises to someone using it in the future. `asHoverableRowCells`. Meh, naming is hard. Another thing that we notice right away is that in order for us to send the message `OnMouseEnterCell` we need to know what are the `CellCoordinates`. In order to know the `CellCoordinates` we need the row and cell numbers. Let's add the row number as a parameter to `asHoverableRowCells`. Our new `asHoverableRowCells` now looks like this:
+We are now able to invoke these two functions inside our `view` function. We need to listen to the `onMouseEnter` and `onMouseLeave` from our `<td>` elements. These `<td>` elements are currently being generated by our `asRowCells` function.
+
+If we are going to add this "behaviour" to the `<td>` returned by `asRowCells`, maybe it is a good idea to rename it, just so that it doesn't bring unexpected surprises to someone using it in the future. `asHoverableRowCells`. Meh, naming is hard. Another thing that we notice right away is that in order for us to send the message `OnMouseEnterCell` we need to know what are the `CellCoordinates`. In order to know the `CellCoordinates` we need the row and cell numbers. Let's add the row number as a parameter to `asHoverableRowCells`. Our new `asHoverableRowCells` now looks like this:
 
 ```elm
 asHoverableRowCells : Int -> List String -> List (Html Msg)
@@ -705,7 +709,7 @@ asCellCoordinates row col =
 
 Oh, okay. A function that takes two `Int` and returns a `CellCoordinates`. Okay, no big deal. But wait, when you are calling that function, you only call it with one `Int`: `cellCoordinate =  asCellCoordinates rowNumber`. What gives? Is this a bug?
 
-Nope. This is actually something quite normal in functional programming. You see, when you specify that any function's signature is `fun : A -> B -> C -> D`, you are actually declaring a chain of functions. Basically functions are first class citizens in functional languages, and ELM is no different. If you call `fun 1`, the return isn't `D`. The return is itself a function. An implicit function that now has signature `fun`` : B -> C -> D`. This technique is called partial function application, and it takes a little while to sink in. Once again, if you would call this function with one single argument, you would get back a new implicit function with signature `fun```` : C -> D`.
+Nope. This is actually something quite normal in functional programming. You see, when you specify that any function's signature is `fun : A -> B -> C -> D`, you are actually declaring a chain of functions. Basically functions are first class citizens in functional languages, and ELM is no different. If you call `fun 1`, the return isn't `D`. The return is itself a function. An implicit function that now has signature ``fun` : B -> C -> D``. This technique is called partial function application, and it takes a little while to sink in. Once again, if you would call this function with one single argument, you would get back a new implicit function with signature ```fun`` : C -> D```.
 
 This is exactly what we have in our local const `cellCoordinate`. It is a function waiting for another `Int` so that it can return a `CellCoordinate`.
 
@@ -735,11 +739,11 @@ We have seen that `OnMouseEnterCell` is a function with signature `CellCoordinat
 
 We have seen that `cellCoordinate` is a function with signature `Int -> CellCoordinates`.
 
-When we do `mouseEnterCellMessage = OnMouseEnterCell << cellCoordinate` we complying with its signature:
+When we do `mouseEnterCellMessage = OnMouseEnterCell << cellCoordinate` we are complying with its signature:
 
 ```
 (<<) (b -> c)                 -> (a -> b)                 -> a   -> c
-(<<) (CellCoordinates -> Msg)    (Int -> CellCoordinates) -> Int -> Msg
+(<<) (CellCoordinates -> Msg) -> (Int -> CellCoordinates) -> Int -> Msg
 ```
 
 We are, once again, taking advantage of partial function application here: we have provided 2 inputs out of 3 to the `<<` function. This means that `mouseEnterCellMessage` is now a function with signature `Int -> Msg`. Let that sip in, it is a mind twist in the beginning. I still struggle with it whenever I want to use function composition, and that is why I am quite grateful to ELM's compiler for constantly having my back and guiding me in the right direction. Notice that `mouseEnterCellMessage` is a partial function, and when we finally want to use it, we provide it with its final argument, so that it can give us the `Msg` that `onMouseEnter` requires:
