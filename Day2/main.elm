@@ -2,6 +2,7 @@ module Main exposing (..)
 
 import Html exposing (Html, table, tr, th, td, text)
 import Html.Attributes
+import Html.Events exposing (onMouseEnter, onMouseLeave)
 
 
 ---- MODEL ----
@@ -17,12 +18,23 @@ type alias Row =
     List String
 
 
+type alias CellCoordinates =
+    { row : Int
+    , col : Int
+    }
+
+asCellCoordinates : Int -> Int -> CellCoordinates
+asCellCoordinates row col =
+    { row = row
+    , col = col
+    }
 
 ---- MSG ----
 
 
 type Msg
-    = NoOp
+    = OnMouseEnterCell CellCoordinates
+    | OnMouseLeaveCell
 
 
 
@@ -107,11 +119,19 @@ asTableRow rowNumber cells =
             td [] [ text (toString rowNumber) ]
 
         rowCells =
-            cells |> asRowCells
+            cells |> (asHoverableRowCells rowNumber)
     in
         tr [] (rowNumberCell :: rowCells)
 
 
-asRowCells : List String -> List (Html Msg)
-asRowCells cells =
-    List.map (\cellText -> td [] [ text cellText ]) cells
+asHoverableRowCells : Int -> List String -> List (Html Msg)
+asHoverableRowCells rowNumber cells =
+    let
+        cellCoordinate = 
+            asCellCoordinates rowNumber
+        
+        mouseEnterCellMessage =
+            OnMouseEnterCell << cellCoordinate
+    in
+        List.indexedMap (\cellNumber cellText -> 
+            td [ onMouseEnter (mouseEnterCellMessage (cellNumber + 1)) ] [ text cellText ]) cells
