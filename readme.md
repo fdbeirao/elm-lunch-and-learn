@@ -8,8 +8,9 @@ Good question. I created this repo to try to share some of the experiences of cr
 
 * [Day 1 - Simple architecture + Mandatory Hello world][Day1]
 * [Day 2 - A walkthrough some of ELM's examples][Day2]
-* [Day 3 - The MVP for an editable table][Day3]
+* [Day 3 - Implementing ELM's HTTP example using RemoteData][Day3]
+* [Day 4 - The MVP for an editable table][Day4]
 
 [Day1]: Day1/
 [Day2]: Day2/
-[Day3]: Day3/
+[Day4]: Day4/
